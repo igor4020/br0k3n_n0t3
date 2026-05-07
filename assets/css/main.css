@@ -134,20 +134,21 @@ article.post p code, article.post li code, code.inline {
   padding: 1px 6px; border-radius: 4px; color: #6a2a23; white-space: nowrap;
 }
 
-/* macOS code window — kramdown wraps in div.highlighter-rouge.language-X > div.highlight > pre.highlight > code.
+/* macOS code window — kramdown wraps block code in div.highlighter-rouge.language-X > div.highlight > pre.highlight > code.
+   Inline code uses <code class="language-X highlighter-rouge"> with no <div>, so we scope to div.highlighter-rouge to skip inline.
    Scope the chrome (titlebar + traffic lights) to the OUTER wrapper only so it doesn't render twice. */
-.highlighter-rouge, figure.highlight {
+div.highlighter-rouge, figure.highlight {
   margin: 26px 0; border-radius: 10px; overflow: hidden;
   background: var(--paper-cream); border: 1px solid var(--rule);
   box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 14px 32px -22px rgba(40,30,10,0.28);
   position: relative;
 }
-.highlighter-rouge::before, figure.highlight::before {
+div.highlighter-rouge::before, figure.highlight::before {
   content: ''; display: block; height: 30px;
   background: linear-gradient(var(--paper-warm), #e6dcc4);
   border-bottom: 1px solid var(--rule);
 }
-.highlighter-rouge::after, figure.highlight::after {
+div.highlighter-rouge::after, figure.highlight::after {
   content: ''; position: absolute; top: 9px; left: 12px;
   width: 46px; height: 12px;
   background:
@@ -156,15 +157,15 @@ article.post p code, article.post li code, code.inline {
     radial-gradient(circle 6px at 40px 6px, #28c840 98%, transparent 100%);
 }
 /* Inner .highlight div — strip any styling that would otherwise stack with the outer wrapper. */
-.highlighter-rouge .highlight { background: transparent; border: 0; box-shadow: none; }
-.highlighter-rouge pre, figure.highlight pre {
+div.highlighter-rouge .highlight { background: transparent; border: 0; box-shadow: none; }
+div.highlighter-rouge pre, figure.highlight pre {
   margin: 0; padding: 14px 18px 16px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 13.5px; line-height: 1.65; color: #2d2a22;
   overflow-x: auto; background: var(--paper-cream); tab-size: 4;
 }
-.highlighter-rouge pre::-webkit-scrollbar, figure.highlight pre::-webkit-scrollbar { height: 6px; }
-.highlighter-rouge pre::-webkit-scrollbar-thumb, figure.highlight pre::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+div.highlighter-rouge pre::-webkit-scrollbar, figure.highlight pre::-webkit-scrollbar { height: 6px; }
+div.highlighter-rouge pre::-webkit-scrollbar-thumb, figure.highlight pre::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
 
 /* Rouge token colors — light / paper */
 .highlight .c, .highlight .c1, .highlight .cm, .highlight .cs { color: #8a8270; font-style: italic; }
