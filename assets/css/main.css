@@ -38,9 +38,9 @@ body {
 ::selection { background: var(--accent-soft); }
 
 .wrap {
-  max-width: 720px;
+  max-width: 880px;
   margin: 32px auto 64px;
-  padding: 56px 36px 120px;
+  padding: 56px 48px 120px;
   position: relative;
   background-color: var(--paper);
   background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.4px);
@@ -113,9 +113,18 @@ article.post blockquote {
   padding: 4px 0 4px 18px; color: var(--ink-soft);
 }
 article.post img {
-  max-width: 100%; background: #fff; padding: 8px 8px 12px;
+  display: block;
+  margin: 28px auto;
+  max-width: 100%;
+  background: var(--paper-cream);
+  padding: 14px;
   border: 1px solid var(--rule);
-  box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 12px 28px -20px rgba(40,30,10,0.25);
+  border-radius: 4px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,0.55) inset,
+    0 1px 0 rgba(0,0,0,0.04),
+    0 16px 36px -20px rgba(40,30,10,0.42),
+    0 4px 12px -8px rgba(40,30,10,0.22);
 }
 
 /* inline code */
@@ -125,19 +134,20 @@ article.post p code, article.post li code, code.inline {
   padding: 1px 6px; border-radius: 4px; color: #6a2a23; white-space: nowrap;
 }
 
-/* macOS code window — Rouge wraps in figure.highlight > pre > code OR just .highlight > pre */
-.highlight, figure.highlight {
+/* macOS code window — kramdown wraps in div.highlighter-rouge.language-X > div.highlight > pre.highlight > code.
+   Scope the chrome (titlebar + traffic lights) to the OUTER wrapper only so it doesn't render twice. */
+.highlighter-rouge, figure.highlight {
   margin: 26px 0; border-radius: 10px; overflow: hidden;
   background: var(--paper-cream); border: 1px solid var(--rule);
   box-shadow: 0 1px 0 rgba(0,0,0,0.04), 0 14px 32px -22px rgba(40,30,10,0.28);
   position: relative;
 }
-.highlight::before, figure.highlight::before {
+.highlighter-rouge::before, figure.highlight::before {
   content: ''; display: block; height: 30px;
   background: linear-gradient(var(--paper-warm), #e6dcc4);
   border-bottom: 1px solid var(--rule);
 }
-.highlight::after, figure.highlight::after {
+.highlighter-rouge::after, figure.highlight::after {
   content: ''; position: absolute; top: 9px; left: 12px;
   width: 46px; height: 12px;
   background:
@@ -145,14 +155,16 @@ article.post p code, article.post li code, code.inline {
     radial-gradient(circle 6px at 23px 6px, #febc2e 98%, transparent 100%),
     radial-gradient(circle 6px at 40px 6px, #28c840 98%, transparent 100%);
 }
-.highlight pre, figure.highlight pre {
+/* Inner .highlight div — strip any styling that would otherwise stack with the outer wrapper. */
+.highlighter-rouge .highlight { background: transparent; border: 0; box-shadow: none; }
+.highlighter-rouge pre, figure.highlight pre {
   margin: 0; padding: 14px 18px 16px;
   font-family: 'JetBrains Mono', ui-monospace, monospace;
   font-size: 13.5px; line-height: 1.65; color: #2d2a22;
   overflow-x: auto; background: var(--paper-cream); tab-size: 4;
 }
-.highlight pre::-webkit-scrollbar, figure.highlight pre::-webkit-scrollbar { height: 6px; }
-.highlight pre::-webkit-scrollbar-thumb, figure.highlight pre::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
+.highlighter-rouge pre::-webkit-scrollbar, figure.highlight pre::-webkit-scrollbar { height: 6px; }
+.highlighter-rouge pre::-webkit-scrollbar-thumb, figure.highlight pre::-webkit-scrollbar-thumb { background: var(--rule); border-radius: 3px; }
 
 /* Rouge token colors — light / paper */
 .highlight .c, .highlight .c1, .highlight .cm, .highlight .cs { color: #8a8270; font-style: italic; }
@@ -218,7 +230,7 @@ footer.site {
 
 @media (max-width: 560px) {
   .wrap {
-    padding: 36px 18px 80px;
+    padding: 36px 20px 80px;
     margin: 0;
     border-radius: 0;
   }
