@@ -1,0 +1,21 @@
+---
+layout: default
+---
+<ul class="post-list">
+  {% for post in site.posts %}
+  <li>
+    <div class="date">{{ post.date | date: "%b · %-d, %Y" }}</div>
+    <div>
+      <a href="{{ post.url | relative_url }}">
+        <div class="title">{{ post.title }}</div>
+        <div class="excerpt">{{ post.excerpt | strip_html | truncate: 200 }}</div>
+      </a>
+      {% if post.tags and post.tags.size > 0 %}
+      <div class="tags">
+        {% for t in post.tags %}<a class="tag" href="{{ '/tags/' | relative_url }}#{{ t | slugify }}">{{ t }}</a>{% endfor %}
+      </div>
+      {% endif %}
+    </div>
+  </li>
+  {% endfor %}
+</ul>

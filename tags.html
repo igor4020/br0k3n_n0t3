@@ -1,0 +1,36 @@
+---
+layout: page
+title: Tags
+subtitle: everything written, sorted by topic.
+permalink: /tags/
+---
+
+{% assign all_tags = "" | split: "" %}
+{% for post in site.posts %}
+  {% for t in post.tags %}
+    {% assign all_tags = all_tags | push: t %}
+  {% endfor %}
+{% endfor %}
+{% assign tags = all_tags | uniq | sort %}
+
+<div class="tag-cloud">
+  {% for t in tags %}
+    {% assign count = 0 %}
+    {% for post in site.posts %}{% if post.tags contains t %}{% assign count = count | plus: 1 %}{% endif %}{% endfor %}
+    <a class="tag-card" href="#{{ t | slugify }}">
+      <div class="h">{{ t }}</div>
+      <div class="c">{{ count }} post{% if count != 1 %}s{% endif %}</div>
+    </a>
+  {% endfor %}
+</div>
+
+<h2 style="margin: 20px 0 10px; font-size: 26px;">Archive</h2>
+<ul class="archive-list">
+  {% for post in site.posts %}
+  <li>
+    <span class="d">{{ post.date | date: "%b · %-d, %Y" }}</span>
+    <a href="{{ post.url | relative_url }}"><span class="t">{{ post.title }}</span></a>
+    <span class="tg">{{ post.tags | join: ' · ' }}</span>
+  </li>
+  {% endfor %}
+</ul>

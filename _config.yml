@@ -1,0 +1,45 @@
+title: Cyber notes
+subtitle: by Igor Benevides
+description: Notes on offensive security, malware development, CTFs, and Windows internals.
+author: Igor Benevides
+email: igor@cyber-notes.dev
+
+# Project site at https://igor4020.github.io/br0k3n_n0t3
+url: "https://igor4020.github.io"
+baseurl: "/br0k3n_n0t3"
+
+permalink: /:year/:month/:day/:title/
+
+markdown: kramdown
+highlighter: rouge
+kramdown:
+  syntax_highlighter: rouge
+  syntax_highlighter_opts:
+    css_class: 'highlight'
+    block:
+      line_numbers: false
+
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+  - jekyll-sitemap
+
+# Default front-matter
+defaults:
+  - scope:
+      path: ""
+      type: posts
+    values:
+      layout: post
+  - scope:
+      path: ""
+      type: pages
+    values:
+      layout: page
+
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+  - node_modules
+  - README.md
