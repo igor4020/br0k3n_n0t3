@@ -6,21 +6,29 @@ tags: [ctf, web, writeup, ssrf, redis]
 excerpt: "A web challenge from ASIS CTF 2024 Quals. SSRF into Redis through curl, with a regex that blocks spaces, dashes, and percent signs — solved with dict:// + EVAL + RANDOMKEY."
 ---
 
-> Originally published on [Medium](https://medium.com/@igormelo4020/asis-ctf-2024-quals-cat-reader-web-writeup-95d87df627db). Played for **SeaDragons** (Universidade Federal do Ceará). Reach me on [LinkedIn](https://www.linkedin.com/in/benevides-igor/).
-
-Hello! My name's Igor and I'm a passionate cybersecurity student and professional. For this CTF I played with my team, **SeaDragons** from Universidade Federal do Ceará (UFC) — most of them, at least. Anyway, let's get to it.
+> Played for **SeaDragons** (Universidade Federal do Ceará). Originally on [Medium](https://medium.com/@igormelo4020/asis-ctf-2024-quals-cat-reader-web-writeup-95d87df627db).
 
 ## The challenge
 
-The challenge gives us source for the application and a description that says it's a website that rates how cute cats are. The provided files:
+The challenge gives us source for the application and a description that says it's a website that rates how cute cats are.
 
-- `docker-compose.yml`
-- `Dockerfile`
-- `main.py`
-- `readflag`
-- `requirements.txt`
+![Challenge prompt: Cat Rater — My new startup is about a website that rates how cute cats are]({{ '/assets/images/cat-rater/challenge-prompt.jpg' | relative_url }})
 
-I'll show the solution from the local environment since it's exactly the same as the remote one. Spinning up the containers gives us a `chall` web service and a `redis` database. After `docker compose up --build` we land on the site at port 8080: a single form that takes a URL, fetches it, and rates your cat. Submitting `https://google.com` gets you back **"Your cat got 2/10"**. Well — it seems my cat is ugly.
+The provided files:
+
+![Files provided in VS Code: chall/main.py, Dockerfile, docker-compose.yml]({{ '/assets/images/cat-rater/files-provided.jpg' | relative_url }})
+
+I'll show the solution from the local environment since it's exactly the same as the remote one. Spinning up the containers gives us a `chall` web service and a `redis` database.
+
+![docker-compose up --build output]({{ '/assets/images/cat-rater/docker-compose-up.jpg' | relative_url }})
+
+After `docker compose up --build` we land on the site at port 8080: a single form that takes a URL, fetches it, and rates your cat.
+
+![Cat Rater UI: Enter a link to your cat picture]({{ '/assets/images/cat-rater/initial-ui.jpg' | relative_url }})
+
+Submitting `https://google.com` gets you back **"Your cat got 2/10"**. Well — it seems my cat is ugly.
+
+![Your cat got 2/10]({{ '/assets/images/cat-rater/cat-2of10.jpg' | relative_url }})
 
 ## The source
 
@@ -113,15 +121,17 @@ Constraints:
 
 A bit of googling lands you on **SSRF + Redis** material — including [this Hacktricks page](https://book.hacktricks.xyz/network-services-pentesting/6379-pentesting-redis). Since the services live on the same docker-compose network, the web service can reach Redis at `redis:6379`.
 
-The classic trick is to use the `gopher://` protocol via curl to send raw bytes to Redis. We tried that:
+The classic trick is to use the `gopher://` protocol via curl to send raw bytes to Redis. We tried that and the logs surfaced this:
 
-```
-gopher://redis:6379/_FLUSHALL%0d%0aSET ...
-```
+![Redis log: 'Possible SECURITY ATTACK detected... Cross Protocol Scripting']({{ '/assets/images/cat-rater/redis-security-attack.jpg' | relative_url }})
 
-…and got **"Something bad happened"**. The logs show the curl call rejected the payload — looks like newer Redis builds reject this gopher injection. We need to circumvent it.
+Looks like newer Redis builds detect and reject the gopher cross-protocol injection. We need to circumvent it.
 
-A read through `man curl` shows curl supports a *lot* of protocols. None of those are blocked by the regex. After some experimentation I landed on **`dict://`**.
+A read through `man curl` shows curl supports a *lot* of protocols — DICT, FILE, FTP, FTPS, GOPHER, GOPHERS, HTTP, HTTPS, IMAP, IMAPS, LDAP, LDAPS, MQTT, POP3, POP3S, RTMP, RTMPS, RTSP, SCP, SFTP, SMB, SMBS, SMTP, SMTPS, TELNET, TFTP, WS, WSS. None of those are blocked by the regex.
+
+![curl(1) man page synopsis]({{ '/assets/images/cat-rater/curl-manual.jpg' | relative_url }})
+
+After some experimentation I landed on **`dict://`**.
 
 ## The other regex problem
 
@@ -139,7 +149,11 @@ You should read the RFC for these protocols — they're old and quirky. `dict://
 dict://redis:6379/keys:*
 ```
 
-That works — keys come back. Now the question becomes: how do we run a *multi-arg* Redis command without spaces?
+That works — keys come back (the `-ERR unknown subcommand 'libcurl'` is just the libcurl banner exchange; the keys themselves print after):
+
+![dict:// curl returning Redis keys]({{ '/assets/images/cat-rater/dict-keys.jpg' | relative_url }})
+
+Now the question becomes: how do we run a *multi-arg* Redis command without spaces?
 
 Eventually I remembered Redis's `EVAL`. It takes a Lua script string, and inside Lua we can use `redis.call(...)` to chain commands together. The `dict://` separator lets us pass the script as a single colon-delimited token, no spaces needed:
 
@@ -176,6 +190,8 @@ dict://redis:6379/eval:"redis.call('SET',redis.call('RANDOMKEY'),'10')":0
 The `/rate` handler runs curl, which talks to Redis via `dict://`. The Lua script picks `RANDOMKEY` (our key, since it's the only one in the DB at the moment) and sets its value to `10`. Then `/rate` adds *another* key with a 1–9 rating, but the order matters: ours was set first, and we already have its UUID.
 
 **3.** Visit `/result?id=96a2c4be-330d-4177-927d-f825f19ef1b5`.
+
+![Result page with the flag]({{ '/assets/images/cat-rater/flag-result.jpg' | relative_url }})
 
 Flag.
 

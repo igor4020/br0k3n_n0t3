@@ -23,34 +23,22 @@ body {
   font-size: 21px;
   line-height: 1.55;
   color: var(--ink);
-  background-color: #b9a7c8;
-  background-image: url('../images/desk-bg.png');
-  background-size: cover;
-  background-position: center top;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
-  image-rendering: pixelated;
-  min-height: 100vh;
-  -webkit-font-smoothing: antialiased;
-  text-rendering: geometricPrecision;
-}
-.wrap, .wrap * { image-rendering: auto; }
-::selection { background: var(--accent-soft); }
-
-.wrap {
-  max-width: 880px;
-  margin: 32px auto 64px;
-  padding: 56px 48px 120px;
-  position: relative;
   background-color: var(--paper);
   background-image: radial-gradient(circle, var(--dot) 1px, transparent 1.4px);
   background-size: 22px 22px;
   background-position: 11px 11px;
-  box-shadow:
-    0 1px 0 rgba(255,255,255,0.04) inset,
-    0 30px 60px -30px rgba(0,0,0,0.55),
-    0 12px 28px -12px rgba(0,0,0,0.45);
-  border-radius: 4px;
+  background-attachment: fixed;
+  min-height: 100vh;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+}
+::selection { background: var(--accent-soft); }
+
+.wrap {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 56px 48px 120px;
+  position: relative;
 }
 
 /* header */
