@@ -6,7 +6,7 @@ tags: [amsi, windows, bypass, evasion, redteam, maldev, notes]
 excerpt: "Revisiting the classic AmsiScanBuffer patch on a fresh Windows VM. The five-byte `xor edi, edi` flip no longer works on its own — there's an extra parameter check that takes a different code path. Two-byte change to `mov edi, 1` puts patching back on the menu."
 ---
 
-I read an excellent post from R-Tec revisiting AMSI bypass techniques in 2025 ([link](https://lnkd.in/dNsMeXBx)) — a great survey of the state of play and whether simple in-process patching is still viable.
+I read an excellent post from R-Tec revisiting AMSI bypass techniques in 2025 ([Bypass AMSI in 2025](https://www.r-tec.net/r-tec-blog-bypass-amsi-in-2025.html)) — a great survey of the state of play and whether simple in-process patching is still viable.
 
 Eager to try it out, I spun up a fresh VM and dropped the classic PoC into PowerShell. It didn't behave as described — the string still got flagged.
 
