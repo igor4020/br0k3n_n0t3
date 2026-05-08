@@ -12,23 +12,23 @@ excerpt: "A web challenge from ASIS CTF 2024 Quals. SSRF into Redis through curl
 
 The challenge gives us source for the application and a description that says it's a website that rates how cute cats are.
 
-![Challenge prompt: Cat Rater — My new startup is about a website that rates how cute cats are]({{ '/assets/images/cat-rater/challenge-prompt.jpg' | relative_url }})
+![Challenge prompt: Cat Rater — My new startup is about a website that rates how cute cats are]({{ '/assets/images/cat-rater/challenge-prompt.png' | relative_url }})
 
 The provided files:
 
-![Files provided in VS Code: chall/main.py, Dockerfile, docker-compose.yml]({{ '/assets/images/cat-rater/files-provided.jpg' | relative_url }})
+![Files provided in VS Code: chall/main.py, Dockerfile, docker-compose.yml]({{ '/assets/images/cat-rater/vscode-files.png' | relative_url }})
 
 I'll show the solution from the local environment since it's exactly the same as the remote one. Spinning up the containers gives us a `chall` web service and a `redis` database.
 
-![docker-compose up --build output]({{ '/assets/images/cat-rater/docker-compose-up.jpg' | relative_url }})
+![docker-compose up --build output]({{ '/assets/images/cat-rater/docker-compose-up.png' | relative_url }})
 
 After `docker compose up --build` we land on the site at port 8080: a single form that takes a URL, fetches it, and rates your cat.
 
-![Cat Rater UI: Enter a link to your cat picture]({{ '/assets/images/cat-rater/initial-ui.jpg' | relative_url }})
+![Cat Rater UI: Enter a link to your cat picture]({{ '/assets/images/cat-rater/initial-ui.png' | relative_url }})
 
 Submitting `https://google.com` gets you back **"Your cat got 2/10"**. Well — it seems my cat is ugly.
 
-![Your cat got 2/10]({{ '/assets/images/cat-rater/cat-2of10.jpg' | relative_url }})
+![Your cat got 2/10]({{ '/assets/images/cat-rater/cat-2of10.png' | relative_url }})
 
 ## The source
 
@@ -121,15 +121,27 @@ Constraints:
 
 A bit of googling lands you on **SSRF + Redis** material — including [this Hacktricks page](https://book.hacktricks.xyz/network-services-pentesting/6379-pentesting-redis). Since the services live on the same docker-compose network, the web service can reach Redis at `redis:6379`.
 
-The classic trick is to use the `gopher://` protocol via curl to send raw bytes to Redis. We tried that and the logs surfaced this:
+A first naive attempt — point curl directly at the Redis port:
 
-![Redis log: 'Possible SECURITY ATTACK detected... Cross Protocol Scripting']({{ '/assets/images/cat-rater/redis-security-attack.jpg' | relative_url }})
+![Cat Rater form with http://redis:6379/test in the input]({{ '/assets/images/cat-rater/ssrf-attempt.png' | relative_url }})
+
+The `/rate` handler comes back with the generic error page (curl exits non-zero):
+
+![/rate returning 'Something bad happened']({{ '/assets/images/cat-rater/something-bad-happened.png' | relative_url }})
+
+The classic next trick is to use the `gopher://` protocol via curl to send raw bytes to Redis. We tried that and the logs surfaced this:
+
+![Redis log: 'Possible SECURITY ATTACK detected... Cross Protocol Scripting']({{ '/assets/images/cat-rater/redis-security-attack.png' | relative_url }})
 
 Looks like newer Redis builds detect and reject the gopher cross-protocol injection. We need to circumvent it.
 
 A read through `man curl` shows curl supports a *lot* of protocols — DICT, FILE, FTP, FTPS, GOPHER, GOPHERS, HTTP, HTTPS, IMAP, IMAPS, LDAP, LDAPS, MQTT, POP3, POP3S, RTMP, RTMPS, RTSP, SCP, SFTP, SMB, SMBS, SMTP, SMTPS, TELNET, TFTP, WS, WSS. None of those are blocked by the regex.
 
-![curl(1) man page synopsis]({{ '/assets/images/cat-rater/curl-manual.jpg' | relative_url }})
+![curl(1) man page synopsis]({{ '/assets/images/cat-rater/curl-manual.png' | relative_url }})
+
+Poking with gopher first — the literal `keys` command trips Redis's protocol heuristic, but a misspelled command (`xkeys`) goes straight through and the cross-protocol scripting check still trips on whatever it does match — neither route gets us a clean ack:
+
+![gopher://redis:6379/keys vs xkeys responses]({{ '/assets/images/cat-rater/gopher-keys.png' | relative_url }})
 
 After some experimentation I landed on **`dict://`**.
 
@@ -151,7 +163,7 @@ dict://redis:6379/keys:*
 
 That works — keys come back (the `-ERR unknown subcommand 'libcurl'` is just the libcurl banner exchange; the keys themselves print after):
 
-![dict:// curl returning Redis keys]({{ '/assets/images/cat-rater/dict-keys.jpg' | relative_url }})
+![dict:// curl returning Redis keys]({{ '/assets/images/cat-rater/dict-keys.png' | relative_url }})
 
 Now the question becomes: how do we run a *multi-arg* Redis command without spaces?
 
@@ -163,7 +175,15 @@ dict://redis:6379/eval:"redis.call('SET',redis.call('RANDOMKEY'),'10')":0
 
 `redis.call('SET', redis.call('RANDOMKEY'), '10')` sets a *random existing key* to `10` — and we don't need to reference it by name (which would require `-`s in the UUID anyway, blocked by the regex).
 
-But there's a snag: when we paste this through the shell directly, the quotes get mangled. **Good news** — `subprocess.run` is called with `shell=False`, so curl receives the URL as a single argv entry. The quotes survive intact through the SSRF that wouldn't survive a shell.
+But there's a snag: when we paste this through the shell directly, the quotes get mangled and Redis answers with `Protocol error: unbalanced quotes in request`:
+
+![dict:// eval returning 'unbalanced quotes in request']({{ '/assets/images/cat-rater/eval-unbalanced-quotes.png' | relative_url }})
+
+**Good news** — `subprocess.run` is called with `shell=False`, so curl receives the URL as a single argv entry. The quotes survive intact through the SSRF that wouldn't survive a shell. Submitting the same payload through the form makes the eval actually run on the chall side:
+
+![Submitting the dict:// eval payload through the Cat Rater form]({{ '/assets/images/cat-rater/dict-eval-ui.png' | relative_url }})
+
+![chall logs: eval call returns OK on the redis side]({{ '/assets/images/cat-rater/eval-via-curl.png' | relative_url }})
 
 ## The exploit
 
@@ -179,6 +199,8 @@ There's still one issue. With many people solving the challenge, `RANDOMKEY` cou
 dict://redis:6379/flushall
 ```
 
+![chall logs: dict:// flushall returns OK and redis writes 'DB saved on disk']({{ '/assets/images/cat-rater/flushall.png' | relative_url }})
+
 The `/rate` handler then inserts our own key with a random rating between 1 and 9. Now Redis contains exactly one key — ours. We get redirected to `/result?id=<uuid>` — note that UUID, e.g. `96a2c4be-330d-4177-927d-f825f19ef1b5`.
 
 **2.** Second request: set the only existing key to 10.
@@ -187,11 +209,13 @@ The `/rate` handler then inserts our own key with a random rating between 1 and 
 dict://redis:6379/eval:"redis.call('SET',redis.call('RANDOMKEY'),'10')":0
 ```
 
+![chall logs: dict:// eval SET RANDOMKEY '10' executed]({{ '/assets/images/cat-rater/eval-set-10.png' | relative_url }})
+
 The `/rate` handler runs curl, which talks to Redis via `dict://`. The Lua script picks `RANDOMKEY` (our key, since it's the only one in the DB at the moment) and sets its value to `10`. Then `/rate` adds *another* key with a 1–9 rating, but the order matters: ours was set first, and we already have its UUID.
 
 **3.** Visit `/result?id=96a2c4be-330d-4177-927d-f825f19ef1b5`.
 
-![Result page with the flag]({{ '/assets/images/cat-rater/flag-result.jpg' | relative_url }})
+![Result page with the flag]({{ '/assets/images/cat-rater/flag-result.png' | relative_url }})
 
 Flag.
 
